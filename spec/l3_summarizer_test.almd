@@ -1,0 +1,37 @@
+import self as l3
+import fizz_protocol.memory
+import string
+
+local fn ev(role: memory.MemoryRole, content: String) -> memory.MemoryEvent = {
+  let empty_tags: List[String] = []
+  memory.MemoryEvent {
+    id: 1, user_id: 1, session_id: none, role: role,
+    content: content, ts: 1, tags: empty_tags,
+  }
+}
+
+test "should_summarize respects the threshold (floor 1)" {
+  assert_eq(l3.should_summarize(8, 8), true)
+  assert_eq(l3.should_summarize(7, 8), false)
+  assert_eq(l3.should_summarize(1, 0), true)   // floor 1
+}
+
+test "events_to_text renders role: content lines" {
+  let txt = l3.events_to_text([ev(memory.User, "やっほー"), ev(memory.Assistant, "こんにちは")])
+  assert_eq(string.contains(txt, "user: やっほー"), true)
+  assert_eq(string.contains(txt, "assistant: こんにちは"), true)
+}
+
+test "build_prompt without prior summary asks for a fresh summary" {
+  let p = l3.build_prompt(none, [ev(memory.User, "猫が好き")])
+  assert_eq(string.contains(p, "やり取り:"), true)
+  assert_eq(string.contains(p, "猫が好き"), true)
+  assert_eq(string.contains(p, "これまでの要約:"), false)
+}
+
+test "build_prompt with prior summary asks for a rolling update" {
+  let p = l3.build_prompt(some("猫好きの常連"), [ev(memory.User, "今日も来た")])
+  assert_eq(string.contains(p, "これまでの要約:"), true)
+  assert_eq(string.contains(p, "猫好きの常連"), true)
+  assert_eq(string.contains(p, "更新して"), true)
+}

@@ -1,0 +1,37 @@
+// fizz_memory_l3_summarizer — per-user 記憶の rolling 要約 (L3)。
+//
+// 責務 (一行): あるユーザの発言が閾値 (既定 8 件) を超えたら、LLM で
+// その人の per-user 要約を更新する。
+//
+// L1 ring / L2 events が「生の発言」を持つのに対し、L3 は「その人はこういう人」
+// という圧縮表現を持つ。recall はこの summary + 直近わずかだけを brain に渡す
+// (会話は前の話題を引きずらない方針)。
+//
+// この mod はプロンプト組み立て・閾値判定など純粋ロジックだけ。実際の LLM 呼び
+// 出し (effect) は main 側の責務 (fizz_llm_client.call_with)。
+
+import fizz_protocol.memory
+import list
+
+let DEFAULT_THRESHOLD = 8
+
+// 要約アシスタントへの system 指示。トップレベル let String は LazyLock 静的に
+// なり move out できない (E0507) ため、fn で都度 owned String を返す。
+fn system() -> String = "あなたは配信視聴者ごとの記憶を更新するアシスタント。視聴者の特徴・好きな話題・口調を、日本語で1〜2文に簡潔にまとめる。前置き・見出し・箇条書きは書かず、本文だけを返す。"
+
+// 新規イベント数が閾値以上なら要約する。閾値の下限は 1。
+fn should_summarize(event_count: Int, threshold: Int) -> Bool =
+  event_count >= (if threshold < 1 then 1 else threshold)
+
+// イベント列を "role: content" の行テキストに連結する。
+fn events_to_text(events: List[memory.MemoryEvent]) -> String =
+  list.fold(events, "", (acc, e) => acc + memory.role_to_string(e.role) + ": " + e.content + "\n")
+
+// 要約更新用のユーザプロンプト。prev があれば rolling 更新、無ければ新規要約。
+fn build_prompt(prev: Option[String], events: List[memory.MemoryEvent]) -> String = {
+  let history = events_to_text(events)
+  match prev {
+    some(s) => "これまでの要約:\n${s}\n\n新しいやり取り:\n${history}\n上の要約を、新しいやり取りを踏まえて1〜2文に更新して。",
+    none    => "やり取り:\n${history}\nこの視聴者について1〜2文で要約して。",
+  }
+}

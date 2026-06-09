@@ -1,0 +1,85 @@
+// CLI エントリポイント — NDJSON で per-user 要約を更新する。
+//
+// stdin: 1 行 1 コマンド (Codec JSON)
+//   {"op":"summarize","user_id":7,"prev":"...","events":[{...MemoryEvent...}],"threshold":8}
+//
+// events 件数が threshold 以上のときだけ LLM を呼んで要約する。
+//
+// stdout:
+//   要約した   → {"user_id":N,"summary":"..."}
+//   閾値未満   → {"user_id":N,"skipped":true}
+//
+// モデルは環境変数 FIZZ_LLM_MODEL (既定 "anthropic:claude-haiku-4-5-20251001")。
+// API キーは fizz_llm_client が provider ごとの env から読む。
+// EOF で終了。不正行は stderr 警告で読み飛ばす。
+
+import self as l3
+import fizz_protocol.memory
+import fizz_llm_client as llm
+import io
+import env
+import json
+import value
+import result
+import list
+import string
+
+local fn field(v: Value, k: String) -> Value = value.get(v, k) ?? value.null()
+local fn fstr(v: Value, k: String) -> String = result.unwrap_or(value.as_string(field(v, k)), "")
+local fn fint(v: Value, k: String) -> Int = result.unwrap_or(value.as_int(field(v, k)), 0)
+local fn farr(v: Value, k: String) -> List[Value] = result.unwrap_or(value.as_array(field(v, k)), [])
+local fn fopt_str(v: Value, k: String) -> Option[String] = result.to_option(value.as_string(field(v, k)))
+local fn fopt_int(v: Value, k: String) -> Option[Int] = result.to_option(value.as_int(field(v, k)))
+
+// LLM で要約文字列を作る。
+effect fn summarize(model: String, prev: Option[String], events: List[memory.MemoryEvent]) -> Result[String, String] = {
+  let prompt = l3.build_prompt(prev, events)
+  let opts = llm.with_max_tokens(llm.with_system(llm.defaults(), l3.system()), 200)
+  let resp = llm.call_with(model, [llm.user(prompt)], opts)!
+  ok(string.trim(resp.content))
+}
+
+effect fn handle(model: String, v: Value) -> Result[Unit, String] = {
+  let uid = fint(v, "user_id")
+  let events = list.filter_map(farr(v, "events"), (ev) => result.to_option(memory.event_decode(ev)))
+  let threshold = fopt_int(v, "threshold") ?? l3.DEFAULT_THRESHOLD
+  if l3.should_summarize(list.len(events), threshold) then {
+    let summary = summarize(model, fopt_str(v, "prev"), events)!
+    println(json.stringify(value.object([
+      ("user_id", value.int(uid)), ("summary", value.str(summary)),
+    ])))
+    ok(())
+  } else {
+    println(json.stringify(value.object([
+      ("user_id", value.int(uid)), ("skipped", value.bool(true)),
+    ])))
+    ok(())
+  }
+}
+
+effect fn main() -> Unit = {
+  let m = string.trim(env.get("FIZZ_LLM_MODEL") ?? "")
+  let model = if m == "" then "anthropic:claude-haiku-4-5-20251001" else m
+  var open = true
+  while open {
+    let line = io.read_line()
+    if string.trim(line) == "" then {
+      open = false
+    } else {
+      match json.parse(line) {
+        err(e) => eprintln("[l3-summarizer] bad json: ${e}"),
+        ok(v)  => {
+          let op = fstr(v, "op")
+          if op == "summarize" then {
+            match handle(model, v) {
+              err(e) => eprintln("[l3-summarizer] ${e}"),
+              ok(_)  => (),
+            }
+          } else {
+            eprintln("[l3-summarizer] unknown op: ${op}")
+          }
+        },
+      }
+    }
+  }
+}
