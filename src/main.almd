@@ -34,7 +34,7 @@ local fn fopt_int(v: Value, k: String) -> Option[Int] = result.to_option(value.a
 // LLM で要約文字列を作る。
 effect fn summarize(model: String, prev: Option[String], events: List[memory.MemoryEvent]) -> Result[String, String] = {
   let prompt = l3.build_prompt(prev, events)
-  let opts = llm.with_max_tokens(llm.with_system(llm.defaults(), l3.system()), 200)
+  let opts = llm.with_max_tokens(llm.with_system(llm.defaults(), l3.SYSTEM), 200)
   let resp = llm.call_with(model, [llm.user(prompt)], opts)!
   ok(string.trim(resp.content))
 }

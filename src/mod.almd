@@ -15,9 +15,8 @@ import list
 
 let DEFAULT_THRESHOLD = 8
 
-// 要約アシスタントへの system 指示。トップレベル let String は LazyLock 静的に
-// なり move out できない (E0507) ため、fn で都度 owned String を返す。
-fn system() -> String = "あなたは配信視聴者ごとの記憶を更新するアシスタント。視聴者の特徴・好きな話題・口調を、日本語で1〜2文に簡潔にまとめる。前置き・見出し・箇条書きは書かず、本文だけを返す。"
+// 要約アシスタントへの system 指示。
+let SYSTEM = "あなたは配信視聴者ごとの記憶を更新するアシスタント。視聴者の特徴・好きな話題・口調を、日本語で1〜2文に簡潔にまとめる。前置き・見出し・箇条書きは書かず、本文だけを返す。"
 
 // 新規イベント数が閾値以上なら要約する。閾値の下限は 1。
 fn should_summarize(event_count: Int, threshold: Int) -> Bool =
