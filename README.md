@@ -31,7 +31,7 @@ stdin に 1 行 1 コマンド(NDJSON):
 ## 設定
 
 - `FIZZ_LLM_MODEL` — モデル指定(既定 `anthropic:claude-haiku-4-5-20251001`)。
-- API キーは [fizz-llm-client](https://github.com/Aid-On/fizz-llm-client) が
+- API キーは [fizz-llm-client](https://github.com/aiviecast/fizz-llm-client) が
   provider ごとの env(`ANTHROPIC_API_KEY` 等)から読む。
 
 ## 開発
@@ -46,6 +46,6 @@ almide build src/main.almd -o build/fizz-memory-l3-summarizer
 
 ## 契約
 
-[fizz-protocol](https://github.com/Aid-On/fizz-protocol) の `memory`
-(`MemoryEvent`)+ [fizz-llm-client](https://github.com/Aid-On/fizz-llm-client)
+[fizz-protocol](https://github.com/aiviecast/fizz-protocol) の `memory`
+(`MemoryEvent`)+ [fizz-llm-client](https://github.com/aiviecast/fizz-llm-client)
 に依存。
