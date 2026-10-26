@@ -24,7 +24,7 @@ import result
 import list
 import string
 
-local fn field(v: Value, k: String) -> Value = value.field(v, k) ?? value.null()
+local fn field(v: Value, k: String) -> Value = value.get(v, k) ?? value.null()
 local fn fstr(v: Value, k: String) -> String = result.unwrap_or(value.as_string(field(v, k)), "")
 local fn fint(v: Value, k: String) -> Int = result.unwrap_or(value.as_int(field(v, k)), 0)
 local fn farr(v: Value, k: String) -> List[Value] = result.unwrap_or(value.as_array(field(v, k)), [])
@@ -46,7 +46,7 @@ effect fn handle(model: String, v: Value) -> Result[Unit, String] = {
   if l3.should_summarize(list.len(events), threshold) then {
     let summary = summarize(model, fopt_str(v, "prev"), events)!
     println(json.stringify(value.object([
-      ("user_id", value.int(uid)), ("summary", value.str(summary)),
+      ("user_id", value.int(uid)), ("summary", value.string(summary)),
     ])))
     ok(())
   } else {
@@ -62,7 +62,7 @@ effect fn main() -> Unit = {
   let model = if m == "" then "anthropic:claude-haiku-4-5-20251001" else m
   var open = true
   while open {
-    let line = io.read_line()
+    let line = io.read_line() ?? ""
     if string.trim(line) == "" then {
       open = false
     } else {
