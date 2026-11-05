@@ -1,4 +1,4 @@
 # almide.lock — auto-generated, do not edit
 
-fizz_protocol = { git = "https://github.com/aiviecast/fizz-protocol", ref = "v0.2.2", commit = "9a5be2079917c6b2692a73bf90ae64e4c91d8862" }
-fizz_llm_client = { git = "https://github.com/aiviecast/fizz-llm-client", ref = "v0.2.1", commit = "555ac1d9e5c2041a0e995d13702368c58285ab17" }
+fizz_protocol = { git = "https://github.com/aiviecast/fizz-protocol", ref = "v0.3.0", commit = "95bbab0ec037bc23f7f43d175b818577d1b115f5" }
+fizz_llm_client = { git = "https://github.com/aiviecast/fizz-llm-client", ref = "v0.3.0", commit = "246cc32cff8b491a885b71201807ffc44c540c77" }
